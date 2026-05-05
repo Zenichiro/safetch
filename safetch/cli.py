@@ -30,10 +30,10 @@ def _apply_cli_overrides(
     config: AppConfig,
     proxy_host: str | None,
     proxy_port: int | None,
-    gluetun_enabled: bool | None,
+    gluetun_enabled_override: bool | None,
     gluetun_host: str | None,
     gluetun_port: int | None,
-    log_enabled: bool | None,
+    log_enabled_override: bool | None,
 ) -> AppConfig:
     proxy = config.proxy
     gluetun = config.gluetun
@@ -43,9 +43,9 @@ def _apply_cli_overrides(
         proxy = type(proxy)(host=proxy_host, port=proxy.port)
     if proxy_port is not None:
         proxy = type(proxy)(host=proxy.host, port=proxy_port)
-    if gluetun_enabled is not None:
+    if gluetun_enabled_override is not None:
         gluetun = type(gluetun)(
-            enabled=gluetun_enabled,
+            enabled=gluetun_enabled_override,
             host=gluetun.host,
             port=gluetun.port,
             path=gluetun.path,
@@ -64,8 +64,8 @@ def _apply_cli_overrides(
             port=gluetun_port,
             path=gluetun.path,
         )
-    if log_enabled is not None:
-        logging = type(logging)(enabled=log_enabled)
+    if log_enabled_override is not None:
+        logging = type(logging)(enabled=log_enabled_override)
 
     return AppConfig(proxy=proxy, gluetun=gluetun, checks=config.checks, logging=logging)
 
@@ -89,6 +89,16 @@ def _result_from_check_failure(url: str, message: str) -> DownloadResult:
     )
 
 
+def _resolve_bool_override(enabled_flag: bool, disabled_flag: bool, option_name: str) -> bool | None:
+    if enabled_flag and disabled_flag:
+        raise typer.BadParameter(f"cannot use both {option_name} and its disabling form together")
+    if enabled_flag:
+        return True
+    if disabled_flag:
+        return False
+    return None
+
+
 @app.command()
 def main(
     url: Annotated[str | None, typer.Argument(help="Single URL to download.")] = None,
@@ -102,21 +112,25 @@ def main(
     config_path: Annotated[Path | None, typer.Option("--config", help="Override config path.")] = None,
     proxy_host: Annotated[str | None, typer.Option("--proxy-host", help="Proxy host override.")] = None,
     proxy_port: Annotated[int | None, typer.Option("--proxy-port", help="Proxy port override.")] = None,
-    gluetun_enabled: Annotated[bool | None, typer.Option("--gluetun/--no-gluetun", help="Enable or disable Gluetun checks.")] = None,
+    gluetun_enabled: Annotated[bool, typer.Option("--gluetun", help="Enable Gluetun checks.")] = False,
+    no_gluetun: Annotated[bool, typer.Option("--no-gluetun", help="Disable Gluetun checks.")] = False,
     gluetun_host: Annotated[str | None, typer.Option("--gluetun-host", help="Gluetun host override.")] = None,
     gluetun_port: Annotated[int | None, typer.Option("--gluetun-port", help="Gluetun port override.")] = None,
-    log_enabled: Annotated[bool | None, typer.Option("--log/--no-log", help="Enable simple logs.")] = None,
+    log_enabled: Annotated[bool, typer.Option("--log", help="Enable simple logs.")] = False,
+    no_log: Annotated[bool, typer.Option("--no-log", help="Disable simple logs.")] = False,
 ) -> None:
     headers = tuple(header or [])
     config = load_config(config_path)
+    gluetun_enabled_override = _resolve_bool_override(gluetun_enabled, no_gluetun, "--gluetun")
+    log_enabled_override = _resolve_bool_override(log_enabled, no_log, "--log")
     config = _apply_cli_overrides(
         config,
         proxy_host=proxy_host,
         proxy_port=proxy_port,
-        gluetun_enabled=gluetun_enabled,
+        gluetun_enabled_override=gluetun_enabled_override,
         gluetun_host=gluetun_host,
         gluetun_port=gluetun_port,
-        log_enabled=log_enabled,
+        log_enabled_override=log_enabled_override,
     )
 
     urls = _resolve_urls(url, input_file)
