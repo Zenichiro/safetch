@@ -187,9 +187,9 @@ def main(
         command = build_wget_command(config, request)
         redacted_preview = [redact_header(redact_url(part)) for part in command]
         _emit(f"running {' '.join(redacted_preview)}", enabled=config.logging.enabled)
-        completed = run_wget(command)
-        stderr_text = redact_text(completed.stderr.strip())
-        stdout_text = redact_text(completed.stdout.strip())
+        completed = run_wget(command, stream_output=True)
+        stderr_text = redact_text(completed.stderr.strip()) if completed.stderr else ""
+        stdout_text = redact_text(completed.stdout.strip()) if completed.stdout else ""
         message = stderr_text or stdout_text or None
         ok = completed.returncode == 0
 

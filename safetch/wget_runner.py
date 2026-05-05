@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import subprocess
 from dataclasses import dataclass
-from pathlib import Path
 
 from safetch.config import AppConfig
 
@@ -45,5 +44,14 @@ def build_wget_command(config: AppConfig, request: WgetRequest) -> list[str]:
     return command
 
 
-def run_wget(command: list[str]) -> subprocess.CompletedProcess[str]:
+def run_wget(command: list[str], *, stream_output: bool = False) -> subprocess.CompletedProcess[str]:
+    if stream_output:
+        completed = subprocess.run(command, check=False)
+        return subprocess.CompletedProcess(
+            args=command,
+            returncode=completed.returncode,
+            stdout=None,
+            stderr=None,
+        )
+
     return subprocess.run(command, capture_output=True, text=True, check=False)
