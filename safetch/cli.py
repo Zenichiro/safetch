@@ -23,11 +23,8 @@ from safetch.result import DownloadResult
 from safetch.vpncheck import run_checks
 from safetch.wget_runner import WgetRequest, build_wget_command, run_wget
 
-app = typer.Typer(
-    add_completion=False,
-    help="Safely download files through a verified proxy path.",
-    invoke_without_command=True,
-)
+app = typer.Typer(add_completion=False, help="Safely download files through a verified proxy path.")
+init_app = typer.Typer(add_completion=False, help="Initialize safetch configuration.")
 
 
 def _resolve_urls(url: str | None, input_file: Path | None) -> list[str]:
@@ -112,9 +109,8 @@ def _resolve_bool_override(enabled_flag: bool, disabled_flag: bool, option_name:
     return None
 
 
-@app.callback()
+@app.callback(invoke_without_command=True)
 def main(
-    ctx: typer.Context,
     url: Annotated[str | None, typer.Argument(help="Single URL to download.")] = None,
     input_file: Annotated[Path | None, typer.Option("--input", help="Read URLs from a file.")] = None,
     output: Annotated[str | None, typer.Option("-o", "--output", help="Output file for a single URL.")] = None,
@@ -133,9 +129,6 @@ def main(
     log_enabled: Annotated[bool, typer.Option("--log", help="Enable simple logs.")] = False,
     no_log: Annotated[bool, typer.Option("--no-log", help="Disable simple logs.")] = False,
 ) -> None:
-    if ctx.invoked_subcommand is not None:
-        return
-
     headers = tuple(header or [])
     config = load_config(config_path)
     gluetun_enabled_override = _resolve_bool_override(gluetun_enabled, no_gluetun, "--gluetun")
@@ -218,7 +211,7 @@ def main(
     raise typer.Exit(code=exit_code)
 
 
-@app.command("init")
+@init_app.callback(invoke_without_command=True)
 def init_config(
     config_path: Annotated[Path, typer.Option("--config", help="Config file path.")] = DEFAULT_CONFIG_PATH,
 ) -> None:
@@ -248,6 +241,14 @@ def init_config(
     )
     written_path = write_config(config, config_path)
     print(f"Wrote config to {written_path}")
+
+
+def entrypoint() -> None:
+    if len(sys.argv) > 1 and sys.argv[1] == "init":
+        sys.argv = [sys.argv[0], *sys.argv[2:]]
+        init_app()
+        return
+    app()
 
 
 def _finish(results: list[DownloadResult], *, json_output: bool) -> None:

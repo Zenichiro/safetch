@@ -24,7 +24,7 @@ dev = [
 ]
 
 [project.scripts]
-safetch = "safetch.cli:app"
+safetch = "safetch.cli:entrypoint"
 
 [tool.setuptools.packages.find]
 include = ["safetch*"]
