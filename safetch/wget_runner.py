@@ -20,6 +20,7 @@ def build_wget_command(config: AppConfig, request: WgetRequest) -> list[str]:
 
     command = [
         "wget",
+        "--content-disposition",
         "--execute",
         "use_proxy=yes",
         "--execute",
