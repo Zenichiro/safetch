@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from safetch.config import AppConfig, DEFAULT_CONFIG_PATH, load_config
+from safetch.config import AppConfig, DEFAULT_CONFIG_PATH, load_config, write_config
 
 
 def test_config_defaults_when_file_missing(tmp_path: Path) -> None:
@@ -34,3 +34,14 @@ port = 9000
 
 def test_default_config_path_constant() -> None:
     assert str(DEFAULT_CONFIG_PATH).endswith(".config/safetch/config.toml")
+
+
+def test_write_config_creates_file(tmp_path: Path) -> None:
+    target = tmp_path / "config.toml"
+
+    written = write_config(AppConfig(), target)
+
+    assert written == target
+    contents = target.read_text(encoding="utf-8")
+    assert "[proxy]" in contents
+    assert 'host = "127.0.0.1"' in contents

@@ -19,6 +19,7 @@ v0.1 includes:
 - Explicit proxy configuration for `wget`
 - Proxy connectivity and egress checks
 - Optional Gluetun-aware verification
+- Interactive `safetch init` setup command
 - Download resume enabled by default
 - Simple optional logging
 - JSON final results
@@ -49,6 +50,10 @@ Batch input file rules:
 Default config path:
 
 `~/.config/safetch/config.toml`
+
+Initial setup may be created interactively with:
+
+`safetch init`
 
 Configuration precedence:
 

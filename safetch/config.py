@@ -46,6 +46,10 @@ class AppConfig:
     logging: LoggingConfig = LoggingConfig()
 
 
+def _toml_bool(value: bool) -> str:
+    return "true" if value else "false"
+
+
 def _parse_bool(value: str) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
@@ -116,3 +120,34 @@ def load_config(config_path: str | Path | None = None) -> AppConfig:
     config = _apply_mapping(config, _load_toml(path))
     config = _apply_environment(config)
     return config
+
+
+def render_config(config: AppConfig) -> str:
+    return "\n".join(
+        [
+            "[proxy]",
+            f'host = "{config.proxy.host}"',
+            f"port = {config.proxy.port}",
+            "",
+            "[gluetun]",
+            f"enabled = {_toml_bool(config.gluetun.enabled)}",
+            f'host = "{config.gluetun.host}"',
+            f"port = {config.gluetun.port}",
+            f'path = "{config.gluetun.path}"',
+            "",
+            "[checks]",
+            f"connect_timeout = {config.checks.connect_timeout}",
+            f'egress_url = "{config.checks.egress_url}"',
+            "",
+            "[logging]",
+            f"enabled = {_toml_bool(config.logging.enabled)}",
+            "",
+        ]
+    )
+
+
+def write_config(config: AppConfig, config_path: str | Path | None = None) -> Path:
+    path = Path(config_path).expanduser() if config_path else DEFAULT_CONFIG_PATH
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(render_config(config), encoding="utf-8")
+    return path

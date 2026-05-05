@@ -7,14 +7,27 @@ from typing import Annotated
 
 import typer
 
-from safetch.config import AppConfig, load_config
+from safetch.config import (
+    DEFAULT_CONFIG_PATH,
+    AppConfig,
+    CheckConfig,
+    GluetunConfig,
+    LoggingConfig,
+    ProxyConfig,
+    load_config,
+    write_config,
+)
 from safetch.input_file import parse_input_file
 from safetch.redact import redact_header, redact_text, redact_url
 from safetch.result import DownloadResult
 from safetch.vpncheck import run_checks
 from safetch.wget_runner import WgetRequest, build_wget_command, run_wget
 
-app = typer.Typer(add_completion=False, help="Safely download files through a verified proxy path.")
+app = typer.Typer(
+    add_completion=False,
+    help="Safely download files through a verified proxy path.",
+    invoke_without_command=True,
+)
 
 
 def _resolve_urls(url: str | None, input_file: Path | None) -> list[str]:
@@ -99,8 +112,9 @@ def _resolve_bool_override(enabled_flag: bool, disabled_flag: bool, option_name:
     return None
 
 
-@app.command()
+@app.callback()
 def main(
+    ctx: typer.Context,
     url: Annotated[str | None, typer.Argument(help="Single URL to download.")] = None,
     input_file: Annotated[Path | None, typer.Option("--input", help="Read URLs from a file.")] = None,
     output: Annotated[str | None, typer.Option("-o", "--output", help="Output file for a single URL.")] = None,
@@ -119,6 +133,9 @@ def main(
     log_enabled: Annotated[bool, typer.Option("--log", help="Enable simple logs.")] = False,
     no_log: Annotated[bool, typer.Option("--no-log", help="Disable simple logs.")] = False,
 ) -> None:
+    if ctx.invoked_subcommand is not None:
+        return
+
     headers = tuple(header or [])
     config = load_config(config_path)
     gluetun_enabled_override = _resolve_bool_override(gluetun_enabled, no_gluetun, "--gluetun")
@@ -199,6 +216,38 @@ def main(
     exit_code = 0 if all(result.ok for result in results) else 1
     _finish(results, json_output=json_output)
     raise typer.Exit(code=exit_code)
+
+
+@app.command("init")
+def init_config(
+    config_path: Annotated[Path, typer.Option("--config", help="Config file path.")] = DEFAULT_CONFIG_PATH,
+) -> None:
+    proxy_host = typer.prompt("Proxy host", default="127.0.0.1")
+    proxy_port = typer.prompt("Proxy port", default=8888, type=int)
+    gluetun_enabled = typer.confirm("Enable Gluetun API checks?", default=False)
+
+    gluetun_host = "127.0.0.1"
+    gluetun_port = 8000
+    gluetun_path = "/v1/publicip/ip"
+
+    if gluetun_enabled:
+        gluetun_host = typer.prompt("Gluetun API host", default="127.0.0.1")
+        gluetun_port = typer.prompt("Gluetun API port", default=8000, type=int)
+        gluetun_path = typer.prompt("Gluetun API path", default="/v1/publicip/ip")
+
+    config = AppConfig(
+        proxy=ProxyConfig(host=proxy_host, port=proxy_port),
+        gluetun=GluetunConfig(
+            enabled=gluetun_enabled,
+            host=gluetun_host,
+            port=gluetun_port,
+            path=gluetun_path,
+        ),
+        checks=CheckConfig(),
+        logging=LoggingConfig(),
+    )
+    written_path = write_config(config, config_path)
+    print(f"Wrote config to {written_path}")
 
 
 def _finish(results: list[DownloadResult], *, json_output: bool) -> None:

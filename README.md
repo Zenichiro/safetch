@@ -80,6 +80,14 @@ Environment variables:
 - `SAFETCH_EGRESS_URL`
 - `SAFETCH_LOG_ENABLED`
 
+First-time setup:
+
+```bash
+safetch init
+```
+
+This writes `~/.config/safetch/config.toml` interactively so plain commands like `safetch https://example.com/file.bin` can use your configured proxy by default.
+
 Example config:
 
 ```toml
@@ -88,9 +96,10 @@ host = "127.0.0.1"
 port = 8888
 
 [gluetun]
-enabled = true
+enabled = false
 host = "127.0.0.1"
 port = 8000
+path = "/v1/publicip/ip"
 
 [checks]
 connect_timeout = 5.0
@@ -111,5 +120,5 @@ enabled = false
 
 ```bash
 python -m pip install -e .[dev]
-pytest
+python -m pytest
 ```
